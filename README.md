@@ -120,10 +120,3 @@ oilprice/
 - [中油公司油價查詢](https://vipmbr.cpc.com.tw/mbwebs/showhistoryprice_oil.aspx)
 - [中油公司2019年油價](https://vipmbr.cpc.com.tw/mbwebs/showhistoryprice_oil2019.aspx)
 
-## 開發者
-
-此項目使用現代Web開發技術，提供完整的油價數據管理解決方案。適合學習Web開發、數據爬取、數據視覺化等技術。
-
-## 授權
-
-MIT License
