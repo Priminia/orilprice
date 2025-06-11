@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= title %></title>
+    <link rel='stylesheet' href='/stylesheets/style.css' />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  </head>
+  <body>
+    <div class="container mt-4">
+      <!-- 頁面標題 -->
+      <div class="row">
+        <div class="col-12">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="text-primary"><i class="fas fa-analytics me-2"></i><%= title %></h1>            <div>
+              <a href="/" class="btn btn-secondary me-2">
+                <i class="fas fa-home me-1"></i>返回首頁
+              </a>
+              <a href="/calculator" class="btn btn-warning me-2">
+                <i class="fas fa-calculator me-1"></i>油價計算機
+              </a>
+              <a href="/chart" class="btn btn-primary">
+                <i class="fas fa-chart-line me-1"></i>走勢圖
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 載入狀態 -->
+      <div id="loadingAlert" class="alert alert-info d-none">
+        <i class="fas fa-spinner fa-spin me-2"></i>正在載入數據分析，請稍候...
+      </div>
+
+      <!-- 總體統計 -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header bg-primary text-white">
+              <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>總體統計</h5>
+            </div>
+            <div class="card-body">
+              <div id="overallStats" class="row">
+                <!-- 統計數據將在這裡顯示 -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 各油品統計 -->
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header bg-info text-white">
+              <h5 class="mb-0"><i class="fas fa-gas-pump me-2"></i>各油品統計分析</h5>
+            </div>
+            <div class="card-body">
+              <div id="oilTypeStats" class="row">
+                <!-- 油品統計將在這裡顯示 -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 最新價格趨勢 -->
+      <div class="row mt-4">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header bg-success text-white">
+              <h5 class="mb-0"><i class="fas fa-trending-up me-2"></i>最新價格趨勢 (近30天)</h5>
+            </div>
+            <div class="card-body">
+              <div id="recentTrends" class="row">
+                <!-- 趨勢數據將在這裡顯示 -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      // 初始化頁面
+      document.addEventListener('DOMContentLoaded', function() {
+        loadAnalytics();
+      });
+
+      async function loadAnalytics() {
+        const loadingAlert = document.getElementById('loadingAlert');
+        loadingAlert.classList.remove('d-none');
+        
+        try {
+          // 載入總體統計
+          await loadOverallStats();
+          
+          // 載入各油品統計
+          await loadOilTypeStats();
+          
+          // 載入最新趨勢
+          await loadRecentTrends();
+          
+        } catch (error) {
+          console.error('載入分析數據錯誤:', error);
+          showError('載入分析數據失敗: ' + error.message);
+        } finally {
+          loadingAlert.classList.add('d-none');
+        }
+      }
+
+      async function loadOverallStats() {
+        try {
+          const response = await fetch('/api/oil-prices');
+          const result = await response.json();
+          
+          if (result.success) {
+            const data = result.data;
+            const totalRecords = data.length;
+            const oilTypes = [...new Set(data.map(item => item.oil_type))];
+            const dateRange = getDateRange(data);
+            const avgPrice = data.reduce((sum, item) => sum + item.price, 0) / totalRecords;
+            
+            document.getElementById('overallStats').innerHTML = `
+              <div class="col-md-3">
+                <div class="text-center">
+                  <i class="fas fa-database fa-3x text-primary mb-2"></i>
+                  <h4>${totalRecords.toLocaleString()}</h4>
+                  <p class="text-muted">總記錄數</p>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="text-center">
+                  <i class="fas fa-gas-pump fa-3x text-success mb-2"></i>
+                  <h4>${oilTypes.length}</h4>
+                  <p class="text-muted">油品類型</p>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="text-center">
+                  <i class="fas fa-calendar fa-3x text-info mb-2"></i>
+                  <h4>${dateRange.days}</h4>
+                  <p class="text-muted">數據天數</p>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="text-center">
+                  <i class="fas fa-dollar-sign fa-3x text-warning mb-2"></i>
+                  <h4>$${avgPrice.toFixed(1)}</h4>
+                  <p class="text-muted">平均價格</p>
+                </div>
+              </div>
+            `;
+          }
+        } catch (error) {
+          console.error('載入總體統計錯誤:', error);
+        }
+      }
+
+      async function loadOilTypeStats() {
+        try {
+          const response = await fetch('/api/oil-prices');
+          const result = await response.json();
+          
+          if (result.success) {
+            const data = result.data;
+            const oilTypes = [...new Set(data.map(item => item.oil_type))];
+            
+            let html = '';
+            for (const oilType of oilTypes) {
+              try {
+                const statsResponse = await fetch(`/api/oil-stats/${encodeURIComponent(oilType)}`);
+                const statsResult = await statsResponse.json();
+                
+                if (statsResult.success && statsResult.data) {
+                  const stats = statsResult.data;
+                  const priceRange = stats.max_price - stats.min_price;
+                  
+                  html += `
+                    <div class="col-md-6 mb-3">
+                      <div class="card border-left-primary h-100">
+                        <div class="card-body">
+                          <h5 class="card-title text-primary">${oilType}</h5>
+                          <div class="row">
+                            <div class="col-6">
+                              <small class="text-muted">最低價格</small>
+                              <div class="h6 text-success">$${stats.min_price.toFixed(1)}</div>
+                            </div>
+                            <div class="col-6">
+                              <small class="text-muted">最高價格</small>
+                              <div class="h6 text-danger">$${stats.max_price.toFixed(1)}</div>
+                            </div>
+                            <div class="col-6">
+                              <small class="text-muted">平均價格</small>
+                              <div class="h6 text-info">$${stats.avg_price.toFixed(1)}</div>
+                            </div>
+                            <div class="col-6">
+                              <small class="text-muted">價格區間</small>
+                              <div class="h6 text-warning">$${priceRange.toFixed(1)}</div>
+                            </div>
+                            <div class="col-12 mt-2">
+                              <small class="text-muted">數據期間: ${stats.start_date} 至 ${stats.end_date}</small>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  `;
+                }
+              } catch (error) {
+                console.error(`載入 ${oilType} 統計錯誤:`, error);
+              }
+            }
+            
+            document.getElementById('oilTypeStats').innerHTML = html;
+          }
+        } catch (error) {
+          console.error('載入油品統計錯誤:', error);
+        }
+      }
+
+      async function loadRecentTrends() {
+        try {
+          // 獲取最近30天的數據
+          const endDate = new Date().toISOString().split('T')[0];
+          const startDate = new Date();
+          startDate.setDate(startDate.getDate() - 30);
+          const startDateStr = startDate.toISOString().split('T')[0];
+          
+          const response = await fetch(`/api/oil-prices?startDate=${startDateStr}&endDate=${endDate}`);
+          const result = await response.json();
+          
+          if (result.success && result.data.length > 0) {
+            const data = result.data;
+            const oilTypes = [...new Set(data.map(item => item.oil_type))];
+            
+            let html = '';
+            for (const oilType of oilTypes) {
+              const oilData = data.filter(item => item.oil_type === oilType)
+                                 .sort((a, b) => new Date(a.date) - new Date(b.date));
+              
+              if (oilData.length >= 2) {
+                const firstPrice = oilData[0].price;
+                const lastPrice = oilData[oilData.length - 1].price;
+                const change = lastPrice - firstPrice;
+                const changePercent = (change / firstPrice) * 100;
+                
+                const trendClass = change > 0 ? 'text-danger' : change < 0 ? 'text-success' : 'text-muted';
+                const trendIcon = change > 0 ? 'fa-arrow-up' : change < 0 ? 'fa-arrow-down' : 'fa-minus';
+                
+                html += `
+                  <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                      <div class="card-body text-center">
+                        <h6 class="card-title">${oilType}</h6>
+                        <div class="h4 ${trendClass}">
+                          <i class="fas ${trendIcon} me-1"></i>
+                          ${change > 0 ? '+' : ''}${change.toFixed(1)}
+                        </div>
+                        <small class="text-muted">
+                          ${changePercent > 0 ? '+' : ''}${changePercent.toFixed(2)}%
+                        </small>
+                        <div class="mt-2">
+                          <small class="text-muted">
+                            $${firstPrice.toFixed(1)} → $${lastPrice.toFixed(1)}
+                          </small>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                `;
+              }
+            }
+            
+            if (html) {
+              document.getElementById('recentTrends').innerHTML = html;
+            } else {
+              document.getElementById('recentTrends').innerHTML = `
+                <div class="col-12 text-center text-muted">
+                  <p>近期無足夠數據來分析趨勢</p>
+                </div>
+              `;
+            }
+          } else {
+            document.getElementById('recentTrends').innerHTML = `
+              <div class="col-12 text-center text-muted">
+                <p>無最近30天的數據</p>
+              </div>
+            `;
+          }
+        } catch (error) {
+          console.error('載入趨勢數據錯誤:', error);
+        }
+      }
+
+      function getDateRange(data) {
+        if (data.length === 0) return { days: 0 };
+        
+        const dates = data.map(item => new Date(item.date));
+        const minDate = new Date(Math.min(...dates));
+        const maxDate = new Date(Math.max(...dates));
+        const diffTime = Math.abs(maxDate - minDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        return { days: diffDays };
+      }
+
+      function showError(message) {
+        const container = document.querySelector('.container');
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'alert alert-danger';
+        errorDiv.innerHTML = `<i class="fas fa-exclamation-triangle me-2"></i>${message}`;
+        container.insertBefore(errorDiv, container.firstChild);
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,107 @@
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f8f9fa;
+}
+
+.container {
+  max-width: 1200px;
+}
+
+.card {
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.card-header {
+  border-radius: 10px 10px 0 0 !important;
+  border: none;
+}
+
+.border-left-primary {
+  border-left: 4px solid #007bff !important;
+}
+
+.text-xs {
+  font-size: 0.75rem;
+}
+
+.font-weight-bold {
+  font-weight: 700 !important;
+}
+
+.text-gray-800 {
+  color: #5a5c69 !important;
+}
+
+.fa-spin {
+  animation: fa-spin 1s infinite linear;
+}
+
+@keyframes fa-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+  .container {
+    padding: 10px;
+  }
+  
+  .h1 {
+    font-size: 1.5rem;
+  }
+  
+  .d-flex.justify-content-between {
+    flex-direction: column;
+    gap: 10px;
+  }
+}
+
+/* 圖表容器樣式 */
+.chart-container {
+  position: relative;
+  margin: auto;
+  height: 400px;
+  width: 100%;
+}
+
+/* 按鈕樣式增強 */
+.btn {
+  border-radius: 5px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* 卡片懸停效果 */
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+}
+
+/* 載入動畫 */
+.loading-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

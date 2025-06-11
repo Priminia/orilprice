@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title><%= title %></title>
+    <link rel='stylesheet' href='/stylesheets/style.css' />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <!-- 頁面標題 -->
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1 class="text-primary"><i class="fas fa-chart-line me-2"></i><%= title %></h1>                    <div>
+                        <a href="/" class="btn btn-secondary me-2">
+                            <i class="fas fa-home me-1"></i>返回首頁
+                        </a>
+                        <a href="/calculator" class="btn btn-warning me-2">
+                            <i class="fas fa-calculator me-1"></i>油價計算機
+                        </a>
+                        <button id="refreshBtn" class="btn btn-primary">
+                            <i class="fas fa-sync-alt me-1"></i>重新載入
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 篩選控制 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0"><i class="fas fa-filter me-2"></i>篩選條件</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">                            <div class="col-md-3">
+                                <label for="oilTypeSelect" class="form-label">油品類型</label>
+                                <select id="oilTypeSelect" class="form-select">
+                                    <option value="">全部油品</option>
+                                    <option value="無鉛汽油92">無鉛汽油92</option>
+                                    <option value="無鉛汽油95">無鉛汽油95</option>
+                                    <option value="無鉛汽油98">無鉛汽油98</option>
+                                    <option value="超級/高級柴油">超級/高級柴油</option>
+                                    <option value="二行程無鉛">二行程無鉛</option>
+                                </select>
+                            </div>                            <div class="col-md-3">
+                                <label for="startDate" class="form-label">開始日期</label>
+                                <input type="date" id="startDate" class="form-control" value="2024-01-01">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="endDate" class="form-label">結束日期</label>
+                                <input type="date" id="endDate" class="form-control" value="2025-12-31">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">&nbsp;</label>
+                                <div class="d-grid">
+                                    <button id="applyFilterBtn" class="btn btn-success">
+                                        <i class="fas fa-search me-1"></i>套用篩選
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 載入狀態 -->
+        <div id="loadingAlert" class="alert alert-info d-none">
+            <i class="fas fa-spinner fa-spin me-2"></i>正在載入圖表數據，請稍候...
+        </div>
+
+        <!-- 圖表區域 -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>油價走勢圖</h5>
+                    </div>
+                    <div class="card-body">
+                        <div style="position: relative; height: 400px; width: 100%;">
+                            <canvas id="oilPriceChart" width="400" height="200"></canvas>
+                        </div>
+                        <div id="errorMessage" class="alert alert-danger d-none"></div>
+                        <div id="debugInfo" class="alert alert-info d-none"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Chart.js 和日期適配器 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+    <script>
+        let chart = null;
+        let allData = [];
+
+        // 調試信息
+        function showDebug(message) {
+            console.log(message);
+            const debugDiv = document.getElementById('debugInfo');
+            debugDiv.innerHTML = message;
+            debugDiv.classList.remove('d-none');
+        }
+
+        function showError(message) {
+            console.error(message);
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.innerHTML = `<i class="fas fa-exclamation-triangle me-2"></i>${message}`;
+            errorDiv.classList.remove('d-none');
+        }
+
+        // 初始化頁面
+        document.addEventListener('DOMContentLoaded', function() {
+            showDebug('頁面初始化開始...');
+            
+            // 檢查Chart.js是否載入
+            if (typeof Chart === 'undefined') {
+                showError('Chart.js 沒有正確載入');
+                return;
+            }
+            
+            showDebug('Chart.js 已載入，版本: ' + Chart.version);
+            
+            initializePage();
+        });
+
+        async function initializePage() {
+            try {
+                showDebug('開始載入圖表數據...');
+                await loadChartData();
+                
+                // 設置事件監聽器
+                document.getElementById('applyFilterBtn').addEventListener('click', loadChartData);
+                document.getElementById('refreshBtn').addEventListener('click', () => {
+                    window.location.reload();
+                });
+                
+                showDebug('頁面初始化完成');
+            } catch (error) {
+                showError('初始化錯誤: ' + error.message);
+            }
+        }        // 載入圖表數據
+        async function loadChartData() {
+            const loadingAlert = document.getElementById('loadingAlert');
+            const errorDiv = document.getElementById('errorMessage');
+            const debugDiv = document.getElementById('debugInfo');
+            
+            // 清除之前的错误信息
+            errorDiv.classList.add('d-none');
+            debugDiv.classList.add('d-none');
+            
+            loadingAlert.classList.remove('d-none');
+            
+            try {
+                const oilType = document.getElementById('oilTypeSelect').value;
+                const startDate = document.getElementById('startDate').value;
+                const endDate = document.getElementById('endDate').value;
+                
+                const params = new URLSearchParams();
+                if (oilType) params.append('oilType', oilType);
+                if (startDate) params.append('startDate', startDate);
+                if (endDate) params.append('endDate', endDate);
+                params.append('limit', '2000'); // 增加数据量限制
+                
+                const url = `/api/oil-prices?${params}`;
+                showDebug(`請求URL: ${url}`);
+                showDebug(`載入參數: 油品=${oilType || '全部'}, 開始=${startDate}, 結束=${endDate}`);
+                
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP錯誤: ${response.status} ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showDebug(`數據載入成功，共 ${result.data.length} 筆記錄`);
+                    
+                    if (result.data.length === 0) {
+                        showError('沒有找到符合條件的數據，請調整篩選條件');
+                        return;
+                    }
+                    
+                    // 显示数据样本
+                    if (result.data.length > 0) {
+                        const sample = result.data[0];
+                        showDebug(`數據樣本: 日期=${sample.date}, 油品=${sample.oil_type}, 價格=${sample.price}`);
+                    }
+                    
+                    allData = result.data;
+                    renderChart(result.data);
+                } else {
+                    throw new Error(result.error || '載入數據失敗');
+                }
+            } catch (error) {
+                showError('載入圖表數據失敗: ' + error.message);
+                console.error('完整错误信息:', error);
+            } finally {
+                loadingAlert.classList.add('d-none');
+            }
+        }        // 繪製圖表
+        function renderChart(data) {
+            const ctx = document.getElementById('oilPriceChart');
+            
+            if (!ctx) {
+                showError('找不到圖表canvas元素');
+                return;
+            }
+            
+            // 銷毀舊圖表
+            if (chart) {
+                chart.destroy();
+                chart = null;
+            }
+            
+            if (!data || data.length === 0) {
+                showError('無數據可顯示');
+                return;
+            }
+            
+            showDebug(`開始繪製圖表，數據筆數: ${data.length}`);
+            
+            try {                // 處理數據
+                const groupedData = {};
+                let filteredCount = 0;
+                let totalProcessed = 0;
+                
+                data.forEach(item => {
+                    totalProcessed++;
+                    
+                    if (!groupedData[item.oil_type]) {
+                        groupedData[item.oil_type] = [];
+                    }
+                    // 修正日期格式处理
+                    let dateStr = item.date;
+                    if (dateStr.includes('T')) {
+                        dateStr = dateStr.split('T')[0];
+                    }
+                    
+                    // 检查日期是否合理（扩大范围到2025年）
+                    const year = parseInt(dateStr.substring(0, 4));
+                    if (year > 2030 || year < 2020) {
+                        console.warn(`跳过异常日期: ${dateStr}`);
+                        filteredCount++;
+                        return;
+                    }
+                    
+                    groupedData[item.oil_type].push({
+                        x: dateStr,
+                        y: parseFloat(item.price)
+                    });
+                });
+                
+                showDebug(`处理数据: 总数=${totalProcessed}, 过滤=${filteredCount}, 有效=${totalProcessed - filteredCount}`);
+                
+                // 排序數據并过滤空数组
+                Object.keys(groupedData).forEach(oilType => {
+                    groupedData[oilType].sort((a, b) => new Date(a.x) - new Date(b.x));
+                    if (groupedData[oilType].length === 0) {
+                        delete groupedData[oilType];
+                    }
+                });
+                
+                if (Object.keys(groupedData).length === 0) {
+                    showError('過濾後無有效數據可顯示');
+                    return;
+                }
+                
+                const datasets = Object.keys(groupedData).map((oilType, index) => ({
+                    label: oilType,
+                    data: groupedData[oilType],
+                    borderColor: getColor(index),
+                    backgroundColor: getColor(index, 0.1),
+                    fill: false,
+                    tension: 0.1,
+                    pointRadius: 2,
+                    pointHoverRadius: 5,
+                    borderWidth: 2
+                }));
+                
+                showDebug(`數據集數量: ${datasets.length}`);
+                showDebug(`各油品數據點數量: ${Object.keys(groupedData).map(k => `${k}: ${groupedData[k].length}`).join(', ')}`);
+                
+                // 創建圖表
+                chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    unit: 'day',
+                                    displayFormats: {
+                                        day: 'MM-dd'
+                                    }
+                                },
+                                title: {
+                                    display: true,
+                                    text: '日期'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: '價格 (元/公升)'
+                                },
+                                beginAtZero: false
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: '油價歷史走勢'
+                            },
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false
+                            }
+                        }
+                    }
+                });
+                
+                showDebug('圖表繪製完成!');
+                
+                // 隱藏錯誤和調試信息
+                setTimeout(() => {
+                    document.getElementById('errorMessage').classList.add('d-none');
+                    document.getElementById('debugInfo').classList.add('d-none');
+                }, 3000);
+                
+            } catch (error) {
+                showError('圖表繪製錯誤: ' + error.message);
+                console.error(error);
+            }
+        }
+
+        // 獲取顏色
+        function getColor(index, alpha = 1) {
+            const colors = [
+                `rgba(255, 99, 132, ${alpha})`,   // 紅色
+                `rgba(54, 162, 235, ${alpha})`,   // 藍色
+                `rgba(255, 205, 86, ${alpha})`,   // 黃色
+                `rgba(75, 192, 192, ${alpha})`,   // 綠色
+                `rgba(153, 102, 255, ${alpha})`,  // 紫色
+                `rgba(255, 159, 64, ${alpha})`    // 橙色
+            ];
+            return colors[index % colors.length];
+        }
+    </script>
+</body>
+</html>

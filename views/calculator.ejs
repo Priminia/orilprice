@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= title %></title>
+    <link rel='stylesheet' href='/stylesheets/style.css' />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  </head>
+  <body>
+    <div class="container mt-4">
+      <div class="row">
+        <div class="col-12">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="text-primary"><i class="fas fa-calculator me-2"></i><%= title %></h1>
+            <div>
+              <a href="/" class="btn btn-secondary me-2">
+                <i class="fas fa-home me-1"></i>回到首頁
+              </a>
+              <a href="/chart" class="btn btn-primary me-2">
+                <i class="fas fa-chart-line me-1"></i>走勢圖
+              </a>
+              <a href="/analytics" class="btn btn-info">
+                <i class="fas fa-analytics me-1"></i>數據分析
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 計算結果顯示 -->
+      <div id="resultAlert" class="alert alert-success d-none mb-4">
+        <h5><i class="fas fa-check-circle me-2"></i>計算結果</h5>
+        <div id="resultContent"></div>
+      </div>
+
+      <!-- 錯誤訊息 -->
+      <div id="errorAlert" class="alert alert-danger d-none mb-4">
+        <i class="fas fa-exclamation-triangle me-2"></i><span id="errorMessage"></span>
+      </div>
+
+      <div class="row">
+        <!-- 油價計算機 -->
+        <div class="col-lg-8">
+          <div class="card">
+            <div class="card-header bg-primary text-white">
+              <h5 class="mb-0"><i class="fas fa-calculator me-2"></i>油價計算機</h5>
+            </div>
+            <div class="card-body">
+              <form id="calculatorForm">
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label for="fuelConsumption" class="form-label">
+                      <i class="fas fa-tachometer-alt me-2"></i>車輛油耗 (公里/公升)
+                    </label>
+                    <input type="number" class="form-control" id="fuelConsumption" 
+                           step="0.1" min="1" max="50" required>
+                    <div class="form-text">例如：12.5 表示每公升可行駛12.5公里</div>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label for="distance" class="form-label">
+                      <i class="fas fa-route me-2"></i>預計行駛距離 (公里)
+                    </label>
+                    <input type="number" class="form-control" id="distance" 
+                           step="1" min="1" required>
+                    <div class="form-text">輸入您計劃行駛的總距離</div>
+                  </div>
+                </div>
+                
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label for="oilType" class="form-label">
+                      <i class="fas fa-gas-pump me-2"></i>油品類型
+                    </label>
+                    <select class="form-select" id="oilType" required>
+                      <option value="">請選擇油品類型</option>
+                      <% if (latestPrices && latestPrices.length > 0) { %>
+                        <% latestPrices.forEach(function(price) { %>
+                          <option value="<%= price.oil_type %>">
+                            <%= price.oil_type %> - $<%= price.price.toFixed(1) %>/公升
+                          </option>
+                        <% }); %>
+                      <% } else { %>
+                        <option value="92無鉛汽油">92無鉛汽油</option>
+                        <option value="95無鉛汽油">95無鉛汽油</option>
+                        <option value="98無鉛汽油">98無鉛汽油</option>
+                        <option value="超級柴油">超級柴油</option>
+                      <% } %>
+                    </select>
+                  </div>
+                  <div class="col-md-6 mb-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-success w-100">
+                      <i class="fas fa-calculator me-2"></i>計算油費
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- 常見車型油耗參考 -->
+          <div class="card mt-4">
+            <div class="card-header bg-info text-white">
+              <h6 class="mb-0"><i class="fas fa-car me-2"></i>常見車型油耗參考</h6>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6">
+                  <h6 class="text-primary">轎車類型</h6>
+                  <ul class="list-unstyled">
+                    <li><span class="badge bg-light text-dark me-2">小型車</span>15-20 km/L</li>
+                    <li><span class="badge bg-light text-dark me-2">中型車</span>12-16 km/L</li>
+                    <li><span class="badge bg-light text-dark me-2">大型車</span>10-14 km/L</li>
+                    <li><span class="badge bg-light text-dark me-2">油電混合</span>20-25 km/L</li>
+                  </ul>
+                </div>
+                <div class="col-md-6">
+                  <h6 class="text-primary">其他車型</h6>
+                  <ul class="list-unstyled">
+                    <li><span class="badge bg-light text-dark me-2">機車</span>30-50 km/L</li>
+                    <li><span class="badge bg-light text-dark me-2">休旅車</span>8-12 km/L</li>
+                    <li><span class="badge bg-light text-dark me-2">貨車</span>6-10 km/L</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 最新油價 -->
+        <div class="col-lg-4">
+          <div class="card">
+            <div class="card-header bg-warning text-dark">
+              <h6 class="mb-0"><i class="fas fa-clock me-2"></i>最新油價</h6>
+            </div>
+            <div class="card-body">
+              <% if (latestPrices && latestPrices.length > 0) { %>
+                <% latestPrices.forEach(function(price) { %>
+                  <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                    <span class="fw-bold"><%= price.oil_type %></span>
+                    <span class="badge bg-primary">$<%= price.price.toFixed(1) %></span>
+                  </div>
+                <% }); %>
+                <small class="text-muted">
+                  <i class="fas fa-info-circle me-1"></i>
+                  價格更新時間：<%= latestPrices[0] ? new Date(latestPrices[0].date).toLocaleDateString('zh-TW') : '未知' %>
+                </small>
+              <% } else { %>
+                <div class="text-center text-muted">
+                  <i class="fas fa-exclamation-triangle me-2"></i>
+                  暫無油價數據
+                </div>
+              <% } %>
+            </div>
+          </div>
+
+          <!-- 使用說明 -->
+          <div class="card mt-3">
+            <div class="card-header bg-secondary text-white">
+              <h6 class="mb-0"><i class="fas fa-question-circle me-2"></i>使用說明</h6>
+            </div>
+            <div class="card-body">
+              <ol class="small">
+                <li>輸入您車輛的油耗數值（公里/公升）</li>
+                <li>輸入預計行駛的距離（公里）</li>
+                <li>選擇使用的油品類型</li>
+                <li>點擊「計算油費」按鈕</li>
+              </ol>
+              <div class="alert alert-info small mb-0">
+                <i class="fas fa-lightbulb me-1"></i>
+                <strong>小提示：</strong>您可以參考左側的車型油耗參考表來估算您的車輛油耗。
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      document.getElementById('calculatorForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = {
+          fuelConsumption: parseFloat(document.getElementById('fuelConsumption').value),
+          distance: parseFloat(document.getElementById('distance').value),
+          oilType: document.getElementById('oilType').value
+        };
+        
+        // 隱藏之前的結果和錯誤訊息
+        document.getElementById('resultAlert').classList.add('d-none');
+        document.getElementById('errorAlert').classList.add('d-none');
+        
+        // 驗證輸入
+        if (!formData.fuelConsumption || !formData.distance || !formData.oilType) {
+          showError('請填寫所有必要欄位');
+          return;
+        }
+        
+        if (formData.fuelConsumption <= 0 || formData.distance <= 0) {
+          showError('油耗和行駛距離必須大於0');
+          return;
+        }
+        
+        try {
+          const response = await fetch('/api/calculate-fuel-cost', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            showResult(result.data);
+          } else {
+            showError(result.error || '計算失敗');
+          }
+        } catch (error) {
+          showError('網路錯誤，請稍後再試');
+        }
+      });
+      
+      function showResult(data) {
+        const resultContent = document.getElementById('resultContent');
+        resultContent.innerHTML = `
+          <div class="row">
+            <div class="col-md-6">
+              <p><strong>使用油品：</strong>${data.oilType}</p>
+              <p><strong>油品價格：</strong>$${data.oilPrice}/公升</p>
+              <p><strong>車輛油耗：</strong>${data.fuelConsumption} 公里/公升</p>
+            </div>
+            <div class="col-md-6">
+              <p><strong>行駛距離：</strong>${data.distance} 公里</p>
+              <p><strong>需用油量：</strong>${data.fuelNeeded} 公升</p>
+              <p class="fs-5"><strong class="text-success">總油費：$${data.totalCost}</strong></p>
+            </div>
+          </div>
+        `;
+        document.getElementById('resultAlert').classList.remove('d-none');
+      }
+      
+      function showError(message) {
+        document.getElementById('errorMessage').textContent = message;
+        document.getElementById('errorAlert').classList.remove('d-none');
+      }
+      
+      // 預設範例值
+      document.getElementById('fuelConsumption').value = '12.5';
+      document.getElementById('distance').value = '100';
+    </script>
+  </body>
+</html>
